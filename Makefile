@@ -1,4 +1,4 @@
-include .env
+include .env # HF_TOKEN=**********
 
 
 # docker image : florianmorel22/triton-llm-pipeline:0.0.3
