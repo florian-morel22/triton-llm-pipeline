@@ -93,11 +93,11 @@ echo "model compiled"
 
 echo "copying model files"
 mkdir -p "$model_dir"
-cp -r "$PWD/tensorrtllm_backend/all_models/inflight_batcher_llm/tensorrt_llm" "$model_dir/"
-cp -r "$PWD/tensorrtllm_backend/all_models/inflight_batcher_llm/ensemble" "$model_dir/"
-cp -r "$PWD/tensorrtllm_backend/all_models/inflight_batcher_llm/preprocessing" "$model_dir/"
-cp -r "$PWD/tensorrtllm_backend/all_models/inflight_batcher_llm/postprocessing" "$model_dir/"
-cp -r "$converted_model_dir." "$model_dir/tensorrt_llm/1/"
+cp -r "$PWD/config_template/tensorrt_llm" "$model_dir/$model_name-tensorrt_llm"
+cp -r "$PWD/config_template/ensemble" "$model_dir/$model_name"
+cp -r "$PWD/config_template/postprocessing" "$model_dir/$model_name-postprocessing"
+cp -r "$PWD/config_template/preprocessing" "$model_dir/$model_name-preprocessing"
+cp -r "$converted_model_dir." "$model_dir/$model_name-tensorrt_llm/1/"
 
 echo "copying tokenizer"
 cp "$source_model_dir/tokenizer.json" "$tokenizer_dir"
@@ -106,28 +106,28 @@ cp "$source_model_dir/tokenizer_config.json" "$tokenizer_dir"
 echo "configuring tokenizer"
 # Configuring preprocessing
 python "$PWD/tensorrtllm_backend/tools/fill_template.py" --in_place \
-    "$model_dir/preprocessing/config.pbtxt" \
-    tokenizer_dir:"$tokenizer_dir",triton_max_batch_size:"$max_batch_size",preprocessing_instance_count:"$instance_count",max_queue_size:"$max_queue_size"
+    "$model_dir/$model_name-preprocessing/config.pbtxt" \
+    model_name:"$model_name",tokenizer_dir:"$tokenizer_dir",triton_max_batch_size:"$max_batch_size",preprocessing_instance_count:"$instance_count",max_queue_size:"$max_queue_size"
 
 # Configuring postprocessig
 python "$PWD/tensorrtllm_backend/tools/fill_template.py" --in_place \
-    "$model_dir/postprocessing/config.pbtxt" \
-    tokenizer_dir:"$tokenizer_dir",triton_max_batch_size:"$max_batch_size",postprocessing_instance_count:"$instance_count",skip_special_tokens:"$skip_special_tokens"
+    "$model_dir/$model_name-postprocessing/config.pbtxt" \
+    model_name:"$model_name",tokenizer_dir:"$tokenizer_dir",triton_max_batch_size:"$max_batch_size",postprocessing_instance_count:"$instance_count",skip_special_tokens:"$skip_special_tokens"
 
 echo "configuring model"
 # Configuring ensemble (chained model: preprocessing > tensorrt_llm > postprocessing)
 python3 "$PWD/tensorrtllm_backend/tools/fill_template.py" --in_place \
-    "$model_dir/ensemble/config.pbtxt" \
-    triton_max_batch_size:"$max_batch_size",logits_datatype:"$logits_datatype"
+    "$model_dir/$model_name/config.pbtxt" \
+    model_name:"$model_name",triton_max_batch_size:"$max_batch_size",logits_datatype:"$logits_datatype"
 
 # Configuring tensorrt_llm
 python3 "$PWD/tensorrtllm_backend/tools/fill_template.py" --in_place \
-    "$model_dir/tensorrt_llm/config.pbtxt" \
-    decoupled_mode:"$decoupled_mode",engine_dir:"$converted_model_dir",triton_max_batch_size:"$max_batch_size",max_beam_width:1,max_attention_window_size:"$max_context_len",kv_cache_free_gpu_mem_fraction:"$kv_cache_free_gpu_mem_fraction",exclude_input_in_output:"$exclude_input_in_output",enable_kv_cache_reuse:"$enable_kv_cache_reuse",batching_strategy:"$batching_strategy",max_queue_delay_microseconds:"$max_queue_delay_microseconds",enable_chunked_context:"$enable_chunked_context",logits_datatype:"$logits_datatype",encoder_input_features_data_type:"$encoder_input_features_data_type",triton_backend:"$triton_backend",max_queue_size:"$max_queue_size"
+    "$model_dir/$model_name-tensorrt_llm/config.pbtxt" \
+    model_name:"$model_name",decoupled_mode:"$decoupled_mode",engine_dir:"$model_dir/$model_name-tensorrt_llm/1/",triton_max_batch_size:"$max_batch_size",max_beam_width:1,max_attention_window_size:"$max_context_len",kv_cache_free_gpu_mem_fraction:"$kv_cache_free_gpu_mem_fraction",exclude_input_in_output:"$exclude_input_in_output",enable_kv_cache_reuse:"$enable_kv_cache_reuse",batching_strategy:"$batching_strategy",max_queue_delay_microseconds:"$max_queue_delay_microseconds",enable_chunked_context:"$enable_chunked_context",logits_datatype:"$logits_datatype",encoder_input_features_data_type:"$encoder_input_features_data_type",triton_backend:"$triton_backend",max_queue_size:"$max_queue_size"
 
 
 
-# echo "cleaning up temp directories"
-# rm -rf "$source_model_dir"
-# rm -rf "$converted_weights_dir"
-# rm -rf "$converted_model_dir"
+echo "cleaning up temp directories"
+rm -rf "$source_model_dir"
+rm -rf "$converted_weights_dir"
+rm -rf "$converted_model_dir"
